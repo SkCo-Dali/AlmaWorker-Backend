@@ -1,0 +1,36 @@
+# Deploy del worker a Azure Functions (patrón alma-backend: rama -> Environment).
+#   develop -> Development -> skcoAlmaWorkerDev
+#   main    -> Production  -> skcoAlmaWorkerPrd
+# Secrets por environment: AZURE_FUNCTIONAPP_PUBLISH_PROFILE
+# Vars por environment:    AZURE_FUNCTIONAPP_NAME
+
+name: Deploy Azure Function App
+
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'Production' || 'Development' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias en .python_packages (modelo Functions)
+        run: |
+          pip install --target=".python_packages/lib/site-packages" -r requirements.txt
+
+      - name: Deploy
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          package: .
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          scm-do-build-during-deployment: false
+          enable-oryx-build: false

@@ -1,0 +1,7 @@
+.git*
+.vscode
+.venv
+local.settings.json
+test
+README.md
+.github
