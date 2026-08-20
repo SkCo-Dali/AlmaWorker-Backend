@@ -1,0 +1,47 @@
+name: Mirror to Azure DevOps
+
+# Espejo automatico GitHub -> Azure DevOps (org SkandiaCo / proyecto "Direccion de IA").
+# GitHub es la fuente de verdad; Azure DevOps queda como replica de solo escritura por este flujo.
+# Requiere el secret AZDO_PAT: un PAT de Azure DevOps con permiso Code (Read & Write).
+
+on:
+  push:                      # instantaneo para la rama donde exista este archivo
+  workflow_dispatch:         # boton "Run workflow" (corre desde la rama por defecto)
+  schedule:
+    - cron: '*/15 * * * *'   # red de seguridad: cada 15 min sincroniza TODAS las ramas y tags
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-azdo
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Espejo GitHub -> Azure DevOps
+        env:
+          AZDO_PAT: ${{ secrets.AZDO_PAT }}
+          GH_TOKEN: ${{ github.token }}
+          SRC_REPO: ${{ github.repository }}
+          AZDO_ORG: SkandiaCo
+          AZDO_PROJECT_ENC: 'Direcci%C3%B3n%20de%20IA'
+          AZDO_REPO: alma-worker
+        run: |
+          set -euo pipefail
+          if [ -z "${AZDO_PAT:-}" ]; then
+            echo "::error::Falta el secret AZDO_PAT (PAT de Azure DevOps con Code Read & Write)."
+            exit 1
+          fi
+          # Clon espejo del repo de GitHub (todas las ramas y tags)
+          git clone --mirror "https://x-access-token:${GH_TOKEN}@github.com/${SRC_REPO}.git" src.git
+          cd src.git
+          # Autenticacion Basic con el PAT via cabecera (evita exponer el PAT en la URL/logs)
+          AUTH=$(printf ':%s' "${AZDO_PAT}" | base64 -w0)
+          DEST="https://dev.azure.com/${AZDO_ORG}/${AZDO_PROJECT_ENC}/_git/${AZDO_REPO}"
+          # Empuja solo ramas y tags (ignora refs/pull/* de GitHub) y poda lo borrado
+          git -c http.extraHeader="Authorization: Basic ${AUTH}" \
+              push --prune "${DEST}" 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
+          echo "Mirror OK: ${SRC_REPO} -> ${AZDO_REPO}"
