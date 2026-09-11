@@ -50,3 +50,25 @@ def afiliaciones_sync_tick(afiliacionesTimer: func.TimerRequest) -> None:
         logging.info("Afiliaciones Sync Tick: OK")
     except Exception as e:
         logging.exception("Afiliaciones Sync Tick: FAILED. Error: %s", e)
+
+
+@app.timer_trigger(
+    schedule="0 */15 * * * *",   # cada 15 minutos
+    arg_name="comunicacionesTimer",
+    run_on_startup=False,
+    use_monitor=True,
+)
+def comunicaciones_sync_tick(comunicacionesTimer: func.TimerRequest) -> None:
+    """Indexa los .eml nuevos de las campañas activas del Visor de comunicaciones."""
+    logging.info("Comunicaciones Sync Tick: starting...")
+    payload = {
+        "maxPorCampana": int(os.getenv("COMUNICACIONES_MAX_POR_CAMPANA", "5000")),
+    }
+    try:
+        resp = _post_internal("/internal/comunicaciones/worker/tick", payload)
+        logging.info("Comunicaciones sync response: %s - %s",
+                     resp.status_code, resp.text[:2000])
+        resp.raise_for_status()
+        logging.info("Comunicaciones Sync Tick: OK")
+    except Exception as e:
+        logging.exception("Comunicaciones Sync Tick: FAILED. Error: %s", e)
