@@ -1,6 +1,6 @@
 # AlmaWorker-Backend
 
-Azure Function (Python) con los **timers del Motor de Suscripción de Alma**.
+Azure Function (Python) con los **timers de Alma** (Motor de Suscripción y Buzón Inteligente).
 Patrón DaliWorker: la Function es un disparador delgado que llama endpoints
 internos de `alma-backend` (`/internal/*`) — toda la lógica de negocio vive
 en el backend.
@@ -30,6 +30,7 @@ Ambas con VNet integration (misma subnet del backend), Always On y App Insights.
 - `WORKER_API_KEY` — la misma configurada en el App Service del backend
   (generar: `python -c "import secrets; print(secrets.token_urlsafe(48))"`).
 - `AFILIACIONES_MAX_PAGINAS` (default 10), `AFILIACIONES_TOP` (default 500).
+- `BUZON_MAX_CORREOS` (default 25) — correos por buzón que procesa cada tick del Buzón Inteligente.
 - `WEBSITE_TIME_ZONE=America/Bogota` (los CRON corren en hora local).
 
 ## CI/CD
