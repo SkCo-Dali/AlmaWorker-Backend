@@ -1,6 +1,6 @@
 # AlmaWorker-Backend
 
-Azure Function (Python) con los **timers de Alma** (Motor de Suscripción y Buzón Inteligente).
+Azure Function (Python) con los **timers de Alma** (Motor de Suscripción, Buzón Inteligente y Monitor-IA).
 Patrón DaliWorker: la Function es un disparador delgado que llama endpoints
 internos de `alma-backend` (`/internal/*`) — toda la lógica de negocio vive
 en el backend.
@@ -8,6 +8,8 @@ en el backend.
 ```
 AlmaWorker (timer cada 5 min, VNet integration)
    │  POST /internal/suscripcion/worker/tick  (X-Worker-Api-Key)
+   │  POST /internal/buzon-inteligente/worker/tick
+   │  POST /internal/monitor-ia/worker/tick   (cada 5 min, minuto 2: retoma campañas y trae notas de Genesys)
    ▼
 alma-backend ──► pharos-bridge (COAZIR01/04) ──► Sigscg.TrkApplications (bandeja)
    │                                        └──► BD Pharos (declaraciones pre-emisión)
