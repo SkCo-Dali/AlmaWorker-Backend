@@ -1,5 +1,5 @@
 """
-AlmaWorker — timers del Motor de Suscripción de Alma.
+AlmaWorker — timers de Alma (Suscripción, Buzón Inteligente y Monitor-IA).
 
 Patrón DaliWorker: la Function es un disparador delgado; toda la lógica vive
 en alma-backend detrás de /internal/* (así se prueba, versiona y despliega
@@ -71,3 +71,23 @@ def buzon_inteligente_tick(buzonTimer: func.TimerRequest) -> None:
         logging.info("Buzon Inteligente Tick: OK")
     except Exception as e:
         logging.exception("Buzon Inteligente Tick: FAILED. Error: %s", e)
+
+
+@app.timer_trigger(
+    schedule="0 2-57/5 * * * *",   # cada 5 minutos, desfasado 2 min de los otros timers
+    arg_name="monitorIaTimer",
+    run_on_startup=False,
+    use_monitor=True,
+)
+def monitor_ia_tick(monitorIaTimer: func.TimerRequest) -> None:
+    """Monitor-IA: retoma las campañas de autoevaluación que el backend dejó a
+    medias (reinicio) y trae de Genesys las notas pendientes. La lógica vive en
+    alma-backend (/internal/monitor-ia). Sin credenciales de Genesys no hace nada."""
+    logging.info("Monitor-IA Tick: starting...")
+    try:
+        resp = _post_internal("/internal/monitor-ia/worker/tick", {})
+        logging.info("Monitor-IA response: %s - %s", resp.status_code, resp.text[:2000])
+        resp.raise_for_status()
+        logging.info("Monitor-IA Tick: OK")
+    except Exception as e:
+        logging.exception("Monitor-IA Tick: FAILED. Error: %s", e)
