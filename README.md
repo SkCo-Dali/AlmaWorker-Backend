@@ -8,7 +8,7 @@ en el backend.
 ```
 AlmaWorker (timer cada 5 min, VNet integration)
    │  POST /internal/suscripcion/worker/tick  (X-Worker-Api-Key)
-   │  POST /internal/buzon-inteligente/worker/tick
+   │  POST /internal/buzon-inteligente/worker/tick   (cada 3 min, hasta 10 correos por buzón)
    │  POST /internal/monitor-ia/worker/tick   (cada 5 min, minuto 2: retoma campañas y trae notas de Genesys)
    ▼
 alma-backend ──► pharos-bridge (COAZIR01/04) ──► Sigscg.TrkApplications (bandeja)
@@ -32,7 +32,7 @@ Ambas con VNet integration (misma subnet del backend), Always On y App Insights.
 - `WORKER_API_KEY` — la misma configurada en el App Service del backend
   (generar: `python -c "import secrets; print(secrets.token_urlsafe(48))"`).
 - `AFILIACIONES_MAX_PAGINAS` (default 10), `AFILIACIONES_TOP` (default 500).
-- `BUZON_MAX_CORREOS` (default 25) — correos por buzón que procesa cada tick del Buzón Inteligente.
+- `BUZON_MAX_CORREOS` (default 10) — correos por buzón que procesa cada tick del Buzón Inteligente (cada 3 min).
 - `WEBSITE_TIME_ZONE=America/Bogota` (los CRON corren en hora local).
 
 ## CI/CD
