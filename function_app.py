@@ -53,7 +53,7 @@ def afiliaciones_sync_tick(afiliacionesTimer: func.TimerRequest) -> None:
 
 
 @app.timer_trigger(
-    schedule="0 */3 * * * *",   # cada 3 minutos (con tope de 10 correos por buzón)
+    schedule="0 * * * * *",   # cada minuto (hasta 10 correos por buzón, 4 en paralelo)
     arg_name="buzonTimer",
     run_on_startup=False,
     use_monitor=True,
@@ -62,9 +62,11 @@ def buzon_inteligente_tick(buzonTimer: func.TimerRequest) -> None:
     """Buzón Inteligente: ingesta (Graph delta) + clasificación IA + acciones de
     los buzones activos. La lógica vive en alma-backend (/internal/buzon-inteligente)."""
     logging.info("Buzon Inteligente Tick: starting...")
-    # Tope por buzón en cada ciclo: con reglas completas cada correo tarda más, y el
-    # ciclo debe terminar antes del siguiente (3 min) y de los 230 s de App Service.
-    payload = {"maxCorreos": int(os.getenv("BUZON_MAX_CORREOS", "10"))}
+    # Tope por buzón en cada ciclo y correos en paralelo: el backend corta cada ciclo
+    # antes de los 230 s de App Service y frena por la cuota de tokens por minuto. Si un
+    # ciclo dura más de 1 min, Functions no lo encima: el siguiente espera a que termine.
+    payload = {"maxCorreos": int(os.getenv("BUZON_MAX_CORREOS", "10")),
+               "concurrencia": int(os.getenv("BUZON_CONCURRENCIA", "4"))}
     try:
         resp = _post_internal("/internal/buzon-inteligente/worker/tick", payload)
         logging.info("Buzon Inteligente response: %s - %s",
