@@ -116,3 +116,24 @@ def monitor_ia_tick(monitorIaTimer: func.TimerRequest) -> None:
         logging.info("Monitor-IA Tick: OK")
     except Exception as e:
         logging.exception("Monitor-IA Tick: FAILED. Error: %s", e)
+
+
+@app.timer_trigger(
+    schedule="30 * * * * *",   # cada minuto, en el segundo 30 (el buzón corre en el 0)
+    arg_name="agendaTimer",
+    run_on_startup=False,
+    use_monitor=True,
+)
+def agenda_tick(agendaTimer: func.TimerRequest) -> None:
+    """Agenda de Asesorías: envía los correos pendientes de las citas (confirmación,
+    aviso al asesor, recordatorio, cancelación) y aplica la retención de datos. La
+    lógica vive en alma-backend (/internal/agenda). Requiere el backend con la
+    migración 082: desplegar el backend ANTES que este timer."""
+    logging.info("Agenda Tick: starting...")
+    try:
+        resp = _post_internal("/internal/agenda/worker/tick", {}, timeout=55)
+        logging.info("Agenda response: %s - %s", resp.status_code, resp.text[:2000])
+        resp.raise_for_status()
+        logging.info("Agenda Tick: OK")
+    except Exception as e:
+        logging.exception("Agenda Tick: FAILED. Error: %s", e)
