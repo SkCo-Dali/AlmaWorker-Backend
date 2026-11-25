@@ -53,7 +53,7 @@ def afiliaciones_sync_tick(afiliacionesTimer: func.TimerRequest) -> None:
 
 
 @app.timer_trigger(
-    schedule="0 */5 * * * *",   # cada 5 minutos
+    schedule="0 * * * * *",   # cada minuto (hasta 10 correos por buzón, 4 en paralelo)
     arg_name="buzonTimer",
     run_on_startup=False,
     use_monitor=True,
@@ -62,7 +62,11 @@ def buzon_inteligente_tick(buzonTimer: func.TimerRequest) -> None:
     """Buzón Inteligente: ingesta (Graph delta) + clasificación IA + acciones de
     los buzones activos. La lógica vive en alma-backend (/internal/buzon-inteligente)."""
     logging.info("Buzon Inteligente Tick: starting...")
-    payload = {"maxCorreos": int(os.getenv("BUZON_MAX_CORREOS", "25"))}
+    # Tope por buzón en cada ciclo y correos en paralelo: el backend corta cada ciclo
+    # antes de los 230 s de App Service y frena por la cuota de tokens por minuto. Si un
+    # ciclo dura más de 1 min, Functions no lo encima: el siguiente espera a que termine.
+    payload = {"maxCorreos": int(os.getenv("BUZON_MAX_CORREOS", "10")),
+               "concurrencia": int(os.getenv("BUZON_CONCURRENCIA", "4"))}
     try:
         resp = _post_internal("/internal/buzon-inteligente/worker/tick", payload)
         logging.info("Buzon Inteligente response: %s - %s",
@@ -71,6 +75,27 @@ def buzon_inteligente_tick(buzonTimer: func.TimerRequest) -> None:
         logging.info("Buzon Inteligente Tick: OK")
     except Exception as e:
         logging.exception("Buzon Inteligente Tick: FAILED. Error: %s", e)
+
+
+@app.timer_trigger(
+    schedule="0 17 * * * *",   # cada hora, al minuto 17 (lejos de los ticks de 5 min)
+    arg_name="buzonBasesTimer",
+    run_on_startup=False,
+    use_monitor=True,
+)
+def buzon_inteligente_bases(buzonBasesTimer: func.TimerRequest) -> None:
+    """Buzón Inteligente 2.0: re-sincroniza desde SharePoint las bases de
+    responsables que usan las reglas de asignación. La lógica vive en
+    alma-backend (/internal/buzon-inteligente/worker/bases)."""
+    logging.info("Buzon Inteligente Bases: starting...")
+    try:
+        resp = _post_internal("/internal/buzon-inteligente/worker/bases", {})
+        logging.info("Buzon Inteligente Bases response: %s - %s",
+                     resp.status_code, resp.text[:2000])
+        resp.raise_for_status()
+        logging.info("Buzon Inteligente Bases: OK")
+    except Exception as e:
+        logging.exception("Buzon Inteligente Bases: FAILED. Error: %s", e)
 
 
 @app.timer_trigger(
